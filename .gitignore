@@ -1,0 +1,14 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+
+# HuggingFace model cache (downloaded at runtime)
+.cache/
+
+# macOS
+.DS_Store
