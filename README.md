@@ -50,6 +50,8 @@ Domanda + Nome cliente
 │   ├── customer_data.xlsx
 │   ├── tax_knowledge_1.docx
 │   └── tax_knowledge_2.docx
+├── docs/
+│   ├── architettura.docx       # file di spiegazione del progetto
 ├── storage/             # indice RAG persistito (auto-generato)
 ├── run.py               # entry point CLI
 ├── requirements.txt
