@@ -1,0 +1,1 @@
+Estrai 3 parole chiave fiscali dalla domanda. Restituisci solo le parole chiave separate da spazi, senza dati personali, nomi, importi o date.

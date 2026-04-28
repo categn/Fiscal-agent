@@ -50,7 +50,15 @@ def format_customer_block(info: dict | None) -> str:
     return "\n".join(lines)
 
 
-def build_user_prompt(question: str, customer_block: str, tax_context: str) -> str:
+def build_user_prompt(
+    question: str,
+    customer_block: str,
+    tax_context: str,
+    web_context: str = "",
+) -> str:
+    web_section = (
+        f"\n## Guide Fiscozen (fiscozen.it)\n{web_context}" if web_context else ""
+    )
     return f"""## Domanda del cliente
 {question}
 
@@ -58,7 +66,7 @@ def build_user_prompt(question: str, customer_block: str, tax_context: str) -> s
 {customer_block}
 
 ## Contesto fiscale rilevante (knowledge base)
-{tax_context}
+{tax_context}{web_section}
 
-Rispondi alla domanda usando il contesto fiscale. \
+Rispondi alla domanda usando il contesto fiscale e le guide Fiscozen. \
 Adatta la risposta ai dati del cliente quando è utile."""

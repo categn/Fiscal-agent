@@ -1,9 +1,3 @@
-"""CLI entry point — ask the fiscal assistant a question.
-
-Usage:
-    python run.py                          # interactive mode
-    python run.py --nome Mario --cognome Rossi --domanda "..."
-"""
 from __future__ import annotations
 
 import argparse
@@ -14,18 +8,31 @@ from app.main import generate_answer
 
 def interactive():
     print("=== Assistente Fiscale Fiscozen ===\n")
-    print("Clienti disponibili: Mario Rossi, Giulia Verdi, Luca Martini, Elena Riva\n")
+    print("Sono l'assistente fiscale di Fiscozen. Rispondo alle tue domande fiscali")
+    print("cercando prima nella knowledge base aziendale, poi sul sito fiscozen.it.")
+    print("Per domande complesse ti metto in contatto con il tuo Customer Success Consultant.\n")
+    print("Digita 'esci' per uscire.\n")
     nome = input("Nome cliente: ").strip()
     cognome = input("Cognome cliente: ").strip()
-    domanda = input("Domanda: ").strip()
+    print()
 
-    if not domanda:
-        print("Domanda vuota. Uscita.")
-        sys.exit(0)
+    while True:
+        try:
+            domanda = input("Domanda: ").strip()
+        except (KeyboardInterrupt, EOFError):
+            print("\nArrivederci!")
+            sys.exit(0)
 
-    print("\nElaborazione...\n")
-    risposta = generate_answer(domanda, nome, cognome)
-    print(f"{'─' * 60}\n{risposta}\n{'─' * 60}")
+        if domanda.lower() == "esci":
+            print("Arrivederci!")
+            sys.exit(0)
+
+        if not domanda:
+            continue
+
+        print("\nElaborazione...\n")
+        risposta = generate_answer(domanda, nome, cognome)
+        print(f"{'─' * 60}\n{risposta}\n{'─' * 60}\n")
 
 
 def cli():
@@ -34,6 +41,10 @@ def cli():
     parser.add_argument("--cognome", required=True)
     parser.add_argument("--domanda", required=True)
     args = parser.parse_args()
+
+    if not args.domanda.strip():
+        print("Errore: la domanda non può essere vuota.")
+        sys.exit(1)
 
     risposta = generate_answer(args.domanda, args.nome, args.cognome)
     print(risposta)

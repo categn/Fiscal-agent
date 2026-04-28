@@ -523,7 +523,7 @@
   <div class="section-num">02 — Architettura</div>
   <h2>Scelte progettuali</h2>
 
-  <p>Il sistema combina tre componenti distinti — recupero del contesto fiscale (RAG), lookup del profilo cliente, generazione del linguaggio — orchestrati in un singolo prompt strutturato. Ogni scelta è motivata da un requisito preciso.</p>
+  <p>Il sistema combina quattro componenti distinti — recupero del contesto fiscale (RAG), ricerca web su fiscozen.it, lookup del profilo cliente, generazione del linguaggio — orchestrati in un flusso sequenziale. Ogni scelta è motivata da un requisito preciso.</p>
 
   <!-- Card 1 -->
   <div class="choice-card">
@@ -534,7 +534,7 @@
     <div class="choice-body">
       <div class="choice-what">
         <div class="choice-label">Cosa fa</div>
-        <p>I documenti fiscali (<code>.docx</code>) vengono indicizzati in un <em>VectorStoreIndex</em>. Ad ogni domanda, il sistema recupera i 4 chunk più semanticamente rilevanti (512 token, overlap 64) e li inserisce nel prompt.</p>
+        <p>I documenti fiscali (<code>.docx</code>) vengono indicizzati in un <em>VectorStoreIndex</em>. L'indice è <strong>persistito su disco</strong> (<code>storage/</code>): viene costruito solo al primo avvio e ricaricato nei successivi. Ad ogni domanda, il <strong>retriever</strong> recupera i 4 chunk più semanticamente rilevanti (512 token, overlap 64) e li passa come testo al prompt — senza alcuna chiamata LLM interna da parte di LlamaIndex.</p>
       </div>
       <div class="choice-why">
         <div class="choice-label">&#9888; Perché</div>
@@ -547,12 +547,12 @@
   <div class="choice-card">
     <div class="choice-header">
       <div class="tag">Embedding</div>
-      <div class="title">HuggingFace locale — paraphrase-multilingual-MiniLM-L12-v2</div>
+      <div class="title">HuggingFace locale — BAAI/bge-m3</div>
     </div>
     <div class="choice-body">
       <div class="choice-what">
         <div class="choice-label">Cosa fa</div>
-        <p>Gli embedding vettoriali dei documenti e delle query vengono calcolati localmente, senza chiamate API esterne. Il modello scelto è ottimizzato per 50+ lingue, incluso l'italiano.</p>
+        <p>Gli embedding vettoriali dei documenti e delle query vengono calcolati localmente, senza chiamate API esterne. Il modello scelto è ottimizzato per 100+ lingue, incluso l'italiano, con qualità di retrieval superiore ai modelli multilingue standard.</p>
       </div>
       <div class="choice-why">
         <div class="choice-label">&#9888; Perché</div>
@@ -565,16 +565,16 @@
   <div class="choice-card">
     <div class="choice-header">
       <div class="tag">Generazione</div>
-      <div class="title">OpenAI GPT — temperatura 0.2</div>
+      <div class="title">OpenAI GPT — temperatura 0.4</div>
     </div>
     <div class="choice-body">
       <div class="choice-what">
         <div class="choice-label">Cosa fa</div>
-        <p>Il modello GPT riceve un prompt strutturato (system + user) e genera la risposta finale in italiano. La temperatura è impostata a 0.2 per massimizzare la coerenza delle risposte.</p>
+        <p>Il modello GPT riceve un prompt strutturato (system + user) e genera la risposta finale in italiano. La temperatura è impostata a 0.4 per bilanciare coerenza e naturalezza del tono di voce.</p>
       </div>
       <div class="choice-why">
         <div class="choice-label">&#9888; Perché</div>
-        <p>Una temperatura bassa riduce la variabilità e le risposte creative non pertinenti, che in ambito fiscale possono essere fuorvianti. La qualità del linguaggio di GPT supera i modelli open-source per l'italiano.</p>
+        <p>Una temperatura nel range 0.3–0.5 è ideale per un assistente: abbastanza stabile da non inventare dati fiscali, abbastanza fluida da risultare naturale nel tono Fiscozen.</p>
       </div>
     </div>
   </div>
@@ -582,17 +582,35 @@
   <!-- Card 4 -->
   <div class="choice-card">
     <div class="choice-header">
-      <div class="tag">Prompt design</div>
-      <div class="title">Separazione system prompt / user prompt</div>
+      <div class="tag">Web search</div>
+      <div class="title">Google Custom Search — fallback su fiscozen.it</div>
     </div>
     <div class="choice-body">
       <div class="choice-what">
         <div class="choice-label">Cosa fa</div>
-        <p>Il <strong>system prompt</strong> contiene il tono di voce (fisso, caricato da file) e le regole operative. Il <strong>user prompt</strong> è costruito dinamicamente con: domanda, dati del cliente, contesto fiscale dal RAG.</p>
+        <p>Se il RAG non trova chunk rilevanti (score &lt; soglia), il sistema estrae le parole chiave fiscali dalla domanda tramite LLM e le usa per cercare su <code>fiscozen.it</code> via Google Custom Search API. I top-5 snippet vengono aggiunti al contesto.</p>
       </div>
       <div class="choice-why">
         <div class="choice-label">&#9888; Perché</div>
-        <p>Separare le istruzioni permanenti dai dati dinamici rende il tono di voce inviolabile e semplifica l'aggiornamento indipendente di ognuno dei tre blocchi senza toccare il codice.</p>
+        <p>Estendere il contesto al sito pubblico Fiscozen copre guide, servizi e aggiornamenti non presenti nei documenti locali — senza fonti esterne. Le keyword sostituiscono la domanda completa per non trasmettere dati personali a Google.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card 5 (ex 4) -->
+  <div class="choice-card">
+    <div class="choice-header">
+      <div class="tag">Prompt design</div>
+      <div class="title">Prompt caricati da file — configs/prompts/</div>
+    </div>
+    <div class="choice-body">
+      <div class="choice-what">
+        <div class="choice-label">Cosa fa</div>
+        <p>Il <strong>system prompt</strong> e il prompt di estrazione keyword sono caricati da file in <code>configs/prompts/</code>. Il <strong>user prompt</strong> è costruito dinamicamente con: domanda, dati del cliente, contesto (RAG o web).</p>
+      </div>
+      <div class="choice-why">
+        <div class="choice-label">&#9888; Perché</div>
+        <p>Separare i prompt dal codice permette di modificare tono, regole operative e logica di escalation senza deploy. Ogni file è indipendente e versionabile.</p>
       </div>
     </div>
   </div>
@@ -615,20 +633,38 @@
     </div>
   </div>
 
-  <!-- Card 6 -->
+  <!-- Card 6 (ex 5) -->
   <div class="choice-card">
     <div class="choice-header">
-      <div class="tag">Escalation</div>
-      <div class="title">Escalation al consulente — regola nel system prompt</div>
+      <div class="tag">Dati cliente</div>
+      <div class="title">Excel + Pandas — lookup per nome e cognome</div>
     </div>
     <div class="choice-body">
       <div class="choice-what">
         <div class="choice-label">Cosa fa</div>
-        <p>Il system prompt istruisce il modello a rimandare al Customer Success Consultant assegnato (letto dai dati del cliente) quando la domanda è complessa, ambigua o a rischio per il cliente.</p>
+        <p>I dati del cliente (regime, cassa, consulente, fatturato, data apertura P.IVA) sono letti da un file <code>.xlsx</code> via Pandas. Il DataFrame viene caricato in memoria una sola volta e riusato per ogni query.</p>
       </div>
       <div class="choice-why">
         <div class="choice-label">&#9888; Perché</div>
-        <p>Gestire l'escalation via prompt — anziché con logica applicativa — permette di affinare la soglia di delegazione modificando solo testo, senza deploy di codice. Il nome del consulente è sempre personalizzato.</p>
+        <p>Excel è già il formato nativo usato dai team operativi Fiscozen. Eliminare un layer di database riduce la complessità infrastrutturale nella fase demo, mantenendo un'interfaccia familiare per il team.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card 7 -->
+  <div class="choice-card">
+    <div class="choice-header">
+      <div class="tag">Escalation</div>
+      <div class="title">Escalation — codice + system prompt</div>
+    </div>
+    <div class="choice-body">
+      <div class="choice-what">
+        <div class="choice-label">Cosa fa</div>
+        <p>Se né il RAG né la web search trovano contesto, il codice restituisce direttamente un messaggio di escalation con il nome del consulente — senza chiamare l'LLM. Per i casi complessi con contesto disponibile, è il system prompt a istruire il modello a rimandare al consulente.</p>
+      </div>
+      <div class="choice-why">
+        <div class="choice-label">&#9888; Perché</div>
+        <p>Il caso "nessun contesto" è gestito nel codice (deterministico, nessun costo LLM). I casi complessi restano al LLM perché richiedono valutazione contestuale — la soglia è affinabile modificando solo il prompt.</p>
       </div>
     </div>
   </div>
@@ -663,17 +699,17 @@
         <td><strong>RAG — Orchestrazione</strong></td>
         <td><code>llama-index-core</code> &gt;= 0.10</td>
         <td><span class="badge badge-local">Locale</span></td>
-        <td>Gestisce indicizzazione vettoriale e retrieval. Costruisce il <code>VectorStoreIndex</code> dai documenti e risponde alle query con i chunk più rilevanti.</td>
+        <td>Gestisce indicizzazione vettoriale e retrieval puro. Costruisce il <code>VectorStoreIndex</code> dai documenti e recupera i chunk più rilevanti senza sintetizzare con un LLM interno.</td>
       </tr>
       <tr>
         <td><strong>Embedding — Vettorializzazione</strong></td>
         <td><code>llama-index-embeddings-huggingface</code><br><code>sentence-transformers</code></td>
         <td><span class="badge badge-local">Locale</span></td>
-        <td>Converte testo in vettori numerici. Modello: <code>paraphrase-multilingual-MiniLM-L12-v2</code>. Gira in locale, senza chiamate API.</td>
+        <td>Converte testo in vettori numerici. Modello: <code>BAAI/bge-m3</code>. Gira in locale, senza chiamate API. Ottimizzato per retrieval multilingue (100+ lingue, italiano incluso).</td>
       </tr>
       <tr>
         <td><strong>Lettura documenti</strong></td>
-        <td><code>llama-index-readers-file</code><br><code>docx2txt</code>, <code>python-docx</code></td>
+        <td><code>llama-index-readers-file</code><br><code>docx2txt</code></td>
         <td><span class="badge badge-file">File locale</span></td>
         <td>Legge e analizza i file <code>.docx</code> della knowledge base fiscale. Converte il contenuto in nodi testuali per l'indicizzazione.</td>
       </tr>
@@ -684,10 +720,16 @@
         <td>Legge <code>customer_data.xlsx</code>. Esegue il lookup per nome e cognome. Formatta il profilo cliente da inserire nel prompt.</td>
       </tr>
       <tr>
+        <td><strong>Web search</strong></td>
+        <td><code>requests</code> &gt;= 2.31<br>Google Custom Search API</td>
+        <td><span class="badge badge-ext">API esterna</span></td>
+        <td>Fallback se il RAG non trova contesto rilevante. Cerca su <code>fiscozen.it</code> usando keyword estratte dalla domanda. 100 chiamate/giorno gratuite.</td>
+      </tr>
+      <tr>
         <td><strong>Configurazione ambiente</strong></td>
         <td><code>python-dotenv</code> &gt;= 1.0</td>
         <td><span class="badge badge-config">Config</span></td>
-        <td>Carica <code>OPENAI_API_KEY</code> dal file <code>.env</code> locale. Mantiene le credenziali fuori dal codice sorgente.</td>
+        <td>Carica le variabili d'ambiente dal file <code>.env</code> locale (chiavi API, modello, temperatura, soglia RAG). Mantiene le credenziali fuori dal codice sorgente.</td>
       </tr>
     </tbody>
   </table>
@@ -700,7 +742,7 @@
     </div>
     <div class="param-row">
       <div class="param-key">Modello embedding</div>
-      <div class="param-val"><code>paraphrase-multilingual-MiniLM-L12-v2</code> — locale, gratuito</div>
+      <div class="param-val"><code>BAAI/bge-m3</code> — locale, gratuito, ottimizzato per italiano</div>
     </div>
     <div class="param-row">
       <div class="param-key">Chunk size</div>
@@ -712,7 +754,15 @@
     </div>
     <div class="param-row">
       <div class="param-key">Temperatura LLM</div>
-      <div class="param-val">0.2 — bassa variabilità, risposte coerenti</div>
+      <div class="param-val">0.4 — bilanciamento coerenza / naturalezza</div>
+    </div>
+    <div class="param-row">
+      <div class="param-key">RAG min score</div>
+      <div class="param-val">0.5 — soglia di rilevanza sotto cui si attiva la web search</div>
+    </div>
+    <div class="param-row">
+      <div class="param-key">Web search risultati</div>
+      <div class="param-val">5 snippet da fiscozen.it per query</div>
     </div>
     <div class="param-row">
       <div class="param-key">Lingua</div>
@@ -774,14 +824,15 @@
             <div class="flow-node node-process" style="display:inline-block; width:100%;">
               <div class="node-title">&#128218; RAG — RETRIEVAL</div>
               <div class="node-sub"><code>tax_knowledge_1.docx</code> · <code>tax_knowledge_2.docx</code></div>
-              <div class="node-sub">LlamaIndex · HuggingFace embedding</div>
+              <div class="node-sub">LlamaIndex · BAAI/bge-m3</div>
+              <div class="node-sub" style="margin-top:4px; font-style:italic;">indice persistito in <code style="background:none;color:#90cdf4;">storage/</code></div>
             </div>
           </div>
           <div class="v-arrow">&#8595;</div>
           <div style="text-align:center;">
             <div class="flow-node node-process" style="display:inline-block; width:100%; background:#e6fffa; border-color:#319795;">
-              <div class="node-title" style="color:#234e52;">Contesto fiscale</div>
-              <div class="node-sub">Top-4 chunk più rilevanti<br>512 token · overlap 64</div>
+              <div class="node-title" style="color:#234e52;">Score &ge; 0.5?</div>
+              <div class="node-sub">Sì → contesto fiscale locale<br>No → web search</div>
             </div>
           </div>
         </div>
@@ -791,11 +842,32 @@
 
     <div class="v-arrow">&#8595;</div>
 
+    <!-- WEB SEARCH FALLBACK -->
+    <div style="text-align:center; margin-bottom:4px;">
+      <div class="flow-node node-process" style="display:inline-block; min-width:320px; background:#faf5ff; border-color:#805ad5;">
+        <div class="node-title" style="color:#553c9a;">&#127760; WEB SEARCH (fallback)</div>
+        <div class="node-sub">LLM estrae keyword → Google Custom Search su fiscozen.it</div>
+        <div class="node-sub" style="margin-top:4px; font-style:italic;">attivata solo se RAG non trova contesto rilevante</div>
+      </div>
+    </div>
+
+    <div class="v-arrow">&#8595;</div>
+
+    <!-- ESCALATION DIRETTA -->
+    <div style="text-align:center; margin-bottom:4px;">
+      <div class="flow-node node-process" style="display:inline-block; min-width:320px; background:#fff5f5; border-color:#e53e3e;">
+        <div class="node-title" style="color:#9b2c2c;">&#9888; NESSUN CONTESTO TROVATO</div>
+        <div class="node-sub">escalation diretta al consulente — senza chiamata LLM</div>
+      </div>
+    </div>
+
+    <div class="v-arrow">&#8595;</div>
+
     <!-- CONFIG INPUT -->
     <div style="text-align:center; margin-bottom:4px;">
-      <div class="flow-node node-config" style="display:inline-block; min-width:220px;">
+      <div class="flow-node node-config" style="display:inline-block; min-width:280px;">
         <div class="node-title">&#9881; SYSTEM PROMPT</div>
-        <div class="node-sub"><code>tone_of_voice.txt</code> + regole operative</div>
+        <div class="node-sub"><code>configs/prompts/system_prompt.txt</code></div>
         <div class="node-sub">statico — caricato una volta all'avvio</div>
       </div>
     </div>
@@ -807,7 +879,7 @@
         <div class="node-title">&#128203; ASSEMBLAGGIO PROMPT</div>
         <div class="node-sub" style="margin-top:6px;">
           <strong>System:</strong> tono di voce + regole &nbsp;|&nbsp;
-          <strong>User:</strong> domanda + profilo cliente + contesto fiscale
+          <strong>User:</strong> domanda + profilo cliente + contesto (RAG o web)
         </div>
       </div>
     </div>
@@ -818,7 +890,7 @@
     <div style="text-align:center;">
       <div class="flow-node node-llm" style="display:inline-block; min-width:280px;">
         <div class="node-title">&#129302; OPENAI GPT</div>
-        <div class="node-sub">temperatura 0.2 · risposta in italiano</div>
+        <div class="node-sub">temperatura 0.4 · risposta in italiano</div>
         <div class="node-sub">escalation al consulente se domanda complessa</div>
       </div>
     </div>
@@ -829,7 +901,7 @@
     <div style="text-align:center;">
       <div class="flow-node node-output" style="display:inline-block; min-width:280px;">
         <div class="node-title">&#10003; RISPOSTA PERSONALIZZATA</div>
-        <div class="node-sub">tono Fiscozen · dati cliente · fonte verificata</div>
+        <div class="node-sub">tono Fiscozen · dati cliente · [Fonte: knowledge base / fiscozen.it]</div>
       </div>
     </div>
 
