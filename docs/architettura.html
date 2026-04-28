@@ -655,16 +655,34 @@
   <div class="choice-card">
     <div class="choice-header">
       <div class="tag">Escalation</div>
-      <div class="title">Escalation — codice + system prompt</div>
+      <div class="title">Escalation — solo nel codice</div>
     </div>
     <div class="choice-body">
       <div class="choice-what">
         <div class="choice-label">Cosa fa</div>
-        <p>Se né il RAG né la web search trovano contesto, il codice restituisce direttamente un messaggio di escalation con il nome del consulente — senza chiamare l'LLM. Per i casi complessi con contesto disponibile, è il system prompt a istruire il modello a rimandare al consulente.</p>
+        <p>Se né il RAG né la web search trovano contesto, <code>generate_answer()</code> restituisce direttamente un messaggio di escalation con il nome del consulente assegnato al cliente — senza chiamare l'LLM. Il system prompt non gestisce più questo caso: contiene solo istruzioni per non inventare dati quando il contesto è insufficiente.</p>
       </div>
       <div class="choice-why">
         <div class="choice-label">&#9888; Perché</div>
-        <p>Il caso "nessun contesto" è gestito nel codice (deterministico, nessun costo LLM). I casi complessi restano al LLM perché richiedono valutazione contestuale — la soglia è affinabile modificando solo il prompt.</p>
+        <p>Accentrare l'escalation nel codice è deterministico e non costa chiamate LLM. Evita la duplicazione logica tra codice e prompt che rendeva il comportamento ambiguo.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card 8 -->
+  <div class="choice-card">
+    <div class="choice-header">
+      <div class="tag">Osservabilità</div>
+      <div class="title">Logging strutturato — stdlib logging</div>
+    </div>
+    <div class="choice-body">
+      <div class="choice-what">
+        <div class="choice-label">Cosa fa</div>
+        <p>Ogni passo del flusso emette un log su console con timestamp e livello. I livelli usati: <code>INFO</code> per i passi principali (fonte scelta, escalation, caricamento indice), <code>DEBUG</code> per i dettagli tecnici (user prompt completo, chunk score, keyword estratte), <code>WARNING</code> per configurazione mancante, <code>ERROR</code> per errori di rete nella web search. Il logger è configurato in <code>main.py</code> e propagato a <code>utils.py</code> tramite <code>getLogger(__name__)</code>.</p>
+      </div>
+      <div class="choice-why">
+        <div class="choice-label">&#9888; Perché</div>
+        <p>Permette allo sviluppatore di vedere esattamente come viene costruito lo user prompt e quale fonte viene usata per ogni risposta, senza modificare il codice. In produzione è sufficiente alzare il livello a <code>INFO</code> per ridurre il rumore.</p>
       </div>
     </div>
   </div>
@@ -730,6 +748,12 @@
         <td><code>python-dotenv</code> &gt;= 1.0</td>
         <td><span class="badge badge-config">Config</span></td>
         <td>Carica le variabili d'ambiente dal file <code>.env</code> locale (chiavi API, modello, temperatura, soglia RAG). Mantiene le credenziali fuori dal codice sorgente.</td>
+      </tr>
+      <tr>
+        <td><strong>Logging</strong></td>
+        <td><code>logging</code> (stdlib)</td>
+        <td><span class="badge badge-local">Locale</span></td>
+        <td>Log strutturati su console con timestamp. <code>DEBUG</code>: user prompt completo, chunk score, keyword estratte. <code>INFO</code>: fonte usata, escalation, caricamento indice. <code>WARNING</code>/<code>ERROR</code>: credenziali mancanti, errori di rete.</td>
       </tr>
     </tbody>
   </table>
