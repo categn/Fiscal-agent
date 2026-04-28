@@ -7,7 +7,7 @@ from app.main import generate_answer
 
 
 def interactive():
-    print("=== Assistente Fiscale Fiscozen ===\n")
+    print("\n\n=== Assistente Fiscale Fiscozen ===\n")
     print("Sono l'assistente fiscale di Fiscozen. Rispondo alle tue domande fiscali")
     print("cercando prima nella knowledge base aziendale, poi sul sito fiscozen.it.")
     print("Per domande complesse ti metto in contatto con il tuo Customer Success Consultant.\n")
@@ -30,9 +30,9 @@ def interactive():
         if not domanda:
             continue
 
-        print("\nElaborazione...\n")
         risposta = generate_answer(domanda, nome, cognome)
-        print(f"{'─' * 60}\n{risposta}\n{'─' * 60}\n")
+        print("\nRisposta:")
+        print(f"{risposta}\n{'─' * 60}\n")
 
 
 def cli():

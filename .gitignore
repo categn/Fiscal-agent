@@ -15,3 +15,7 @@ storage/
 
 # macOS
 .DS_Store
+
+# Docs — file generati (non tracciati)
+docs/architettura.html
+docs/architettura.pdf

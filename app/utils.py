@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import logging
+# import logging
 import pandas as pd
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).parent.parent
 _CUSTOMER_FILE = BASE_DIR / "data" / "customer_data.xlsx"
@@ -16,9 +16,9 @@ def _load_customers_data() -> pd.DataFrame:
     """Load the customer Excel file into a DataFrame, caching it after the first read."""
     global _customer_df
     if _customer_df is None:
-        logger.info("Caricamento file clienti da %s", _CUSTOMER_FILE)
+        # logger.info("Caricamento file clienti da %s", _CUSTOMER_FILE)
         _customer_df = pd.read_excel(_CUSTOMER_FILE)
-        logger.debug("File clienti caricato: %d righe", len(_customer_df))
+        # logger.debug("File clienti caricato: %d righe", len(_customer_df))
     return _customer_df
 
 
